@@ -1,302 +1,398 @@
-react
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, Cpu, BrainCircuit, Activity, Database, Sparkles, User, Bot, Trash2 } from 'lucide-react';
-
-// --- CORE AI LEARNING ENGINE ---
-class AdaptiveEngine {
-  constructor() {
-    this.memory = {}; // Stores explicit facts (e.g., "sky": "blue")
-    this.patterns = {}; // Tracks word frequencies
-    this.stopWords = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your']);
-    this.interactions = 0;
-  }
-
-  process(input) {
-    this.interactions++;
-    const text = input.trim().toLowerCase();
-    const words = text.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w && !this.stopWords.has(w));
-
-    let response = "";
-    let learnedSomething = false;
-    let detectedPattern = "";
-
-    // 1. Update Pattern Recognition (Frequencies)
-    words.forEach(word => {
-      this.patterns[word] = (this.patterns[word] || 0) + 1;
-      if (this.patterns[word] > 2) {
-        detectedPattern = word;
-      }
-    });
-
-    // 2. Fact Extraction (Learning "X is Y")
-    const factMatch = text.match(/(.*?)\s+(is|are)\s+(.*)/i);
-    if (factMatch && !text.includes('?')) {
-      const subject = factMatch[1].trim();
-      const value = factMatch[3].trim();
-      
-      // Ignore if it's a question format that slipped through
-      if (!['what', 'who', 'where', 'why', 'how'].includes(subject)) {
-        this.memory[subject] = value;
-        learnedSomething = true;
-        response = `I have successfully mapped the concept: "${subject}" = "${value}". My neural pathways have been updated.`;
-      }
-    }
-
-    // 3. Question Answering (Retrieval)
-    const questionMatch = text.match(/(what|who|where) (is|are) (.*)\??/i);
-    if (!learnedSomething && questionMatch) {
-      const subject = questionMatch[3].replace('?', '').trim();
-      
-      if (this.memory[subject]) {
-        response = `Based on my learned data, ${subject} is ${this.memory[subject]}.`;
-      } else {
-        // Try partial match
-        const partialMatch = Object.keys(this.memory).find(k => k.includes(subject) || subject.includes(k));
-        if (partialMatch) {
-           response = `I don't have exact data for "${subject}", but I know that ${partialMatch} is ${this.memory[partialMatch]}.`;
-        } else {
-           response = `I haven't learned about "${subject}" yet. You can teach me by saying "${subject} is [description]".`;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Adaptive AI - Online Edition</title>
+    <style>
+        /* --- CSS Variables & Reset --- */
+        :root {
+            --bg-base: #0a0a0a;
+            --bg-panel: #121212;
+            --bg-surface: #1e1e1e;
+            --border-color: #262626;
+            --text-primary: #f5f5f5;
+            --text-secondary: #a3a3a3;
+            --text-muted: #525252;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-purple: #a855f7;
+            --accent-yellow: #eab308;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-      }
-    }
 
-    // 4. Pattern Feedback & Dynamic Response Generation
-    if (!response) {
-      if (detectedPattern && this.patterns[detectedPattern] % 3 === 0) {
-        response = `I'm detecting a strong pattern in your data. You frequently mention "${detectedPattern}". Tell me more about why this is important to you.`;
-      } else if (words.length > 0) {
-        // Echo back based on highest frequency word in the sentence
-        const keyWord = words.reduce((a, b) => (this.patterns[a] > this.patterns[b] ? a : b));
-        if (this.memory[keyWord]) {
-           response = `You mentioned "${keyWord}". I recall that ${keyWord} is ${this.memory[keyWord]}. How does that relate to what you're saying now?`;
-        } else {
-           const genericResponses = [
-             `Processing your input regarding "${keyWord}". Please provide more context.`,
-             `I am analyzing your syntax. The concept of "${keyWord}" seems central to your thought. Expand on this.`,
-             `Data received. I am building associations around the words you just used. Keep talking so I can learn faster.`
-           ];
-           response = genericResponses[Math.floor(Math.random() * genericResponses.length)];
-        }
-      } else {
-        response = "I am ready to receive data. Teach me something or ask a question.";
-      }
-    }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-sans); background-color: var(--bg-base); color: var(--text-primary); height: 100vh; overflow: hidden; display: flex; }
 
-    return {
-      text: response,
-      stats: {
-        memoryCount: Object.keys(this.memory).length,
-        patternCount: Object.keys(this.patterns).length,
-        topPatterns: Object.entries(this.patterns)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5),
-        recentFacts: Object.entries(this.memory).slice(-3)
-      }
-    };
-  }
-}
+        /* --- Layout --- */
+        .app-container { display: flex; width: 100%; height: 100%; }
+        .chat-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); position: relative; }
+        .brain-panel { width: 320px; background-color: var(--bg-base); display: flex; flex-direction: column; overflow-y: auto; box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
 
-// --- MAIN REACT APPLICATION ---
-export default function App() {
-  const [engine] = useState(new AdaptiveEngine());
-  const [messages, setMessages] = useState([
-    { role: 'ai', content: "Hello. I am Nexus. I learn instantly from your inputs. Teach me facts by saying 'X is Y', or just chat normally and watch me detect your linguistic patterns." }
-  ]);
-  const [input, setInput] = useState("");
-  const [stats, setStats] = useState({ memoryCount: 0, patternCount: 0, topPatterns: [], recentFacts: [] });
-  const messagesEndRef = useRef(null);
+        /* --- Header --- */
+        header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); background-color: rgba(18, 18, 18, 0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: space-between; }
+        .header-title { display: flex; align-items: center; gap: 0.75rem; }
+        .icon-box { padding: 0.5rem; background-color: rgba(59, 130, 246, 0.1); border-radius: 0.5rem; color: var(--accent-blue); display: flex; }
+        .title-text h1 { font-size: 1.125rem; font-weight: 600; }
+        .status { font-size: 0.75rem; color: var(--accent-green); display: flex; align-items: center; gap: 0.375rem; margin-top: 0.125rem; }
+        .status.online { color: #06b6d4; } /* Cyan for internet */
+        
+        /* Indicators */
+        .dot-container { position: relative; display: flex; height: 8px; width: 8px; }
+        .dot-ping { position: absolute; height: 100%; width: 100%; border-radius: 50%; background-color: currentColor; opacity: 0.75; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        .dot-solid { position: relative; border-radius: 50%; height: 8px; width: 8px; background-color: currentColor; }
+        @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+        /* --- Chat Area --- */
+        .messages-container { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; scroll-behavior: smooth; }
+        .message-wrapper { display: flex; width: 100%; }
+        .message-wrapper.user { justify-content: flex-end; }
+        .message-content { display: flex; gap: 1rem; max-width: 80%; }
+        .message-wrapper.user .message-content { flex-direction: row-reverse; }
+        
+        .avatar { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: 4px; }
+        .avatar.ai { background-color: #2563eb; color: white; box-shadow: 0 0 15px rgba(37,99,235,0.4); }
+        .avatar.user { background-color: var(--bg-surface); color: var(--text-secondary); }
+        .avatar.system { background-color: #0891b2; color: white; box-shadow: 0 0 15px rgba(8,145,178,0.4); }
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+        .bubble { padding: 1rem; border-radius: 1rem; line-height: 1.5; font-size: 0.9375rem; }
+        .message-wrapper.ai .bubble, .message-wrapper.system .bubble { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-top-left-radius: 0; color: var(--text-primary); }
+        .message-wrapper.user .bubble { background-color: var(--bg-surface); border: 1px solid var(--border-color); border-top-right-radius: 0; color: var(--text-primary); }
+        .message-wrapper.system .bubble { border-color: #0891b2; background-color: rgba(8, 145, 178, 0.05); }
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+        /* Typing indicator */
+        .typing-indicator { display: flex; gap: 4px; padding: 0.5rem; align-items: center; height: 24px;}
+        .typing-dot { width: 6px; height: 6px; background-color: var(--text-secondary); border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 
-    const userMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    
-    // Simulate slight processing delay for effect
-    setTimeout(() => {
-      const result = engine.process(input);
-      setMessages(prev => [...prev, { role: 'ai', content: result.text }]);
-      setStats(result.stats);
-    }, 400);
+        /* --- Input Area --- */
+        .input-area { padding: 1rem; background-color: var(--bg-panel); border-top: 1px solid var(--border-color); }
+        .input-form { position: relative; display: flex; align-items: center; max-width: 800px; margin: 0 auto; }
+        .chat-input { width: 100%; background-color: var(--bg-base); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.75rem; padding: 1rem 3.5rem 1rem 1rem; font-size: 0.9375rem; outline: none; transition: border-color 0.2s; }
+        .chat-input:focus { border-color: var(--accent-blue); }
+        .btn-send { position: absolute; right: 0.5rem; background-color: var(--accent-blue); color: white; border: none; border-radius: 0.5rem; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-send:disabled { background-color: var(--bg-surface); color: var(--text-muted); cursor: not-allowed; }
 
-    setInput("");
-  };
+        /* --- Brain Panel (Right Sidebar) --- */
+        .panel-header { padding: 1.5rem; position: sticky; top: 0; background-color: rgba(10, 10, 10, 0.9); border-bottom: 1px solid var(--border-color); font-size: 0.875rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; display:flex; gap:0.5rem; align-items:center; }
+        .panel-content { padding: 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .stat-card { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1rem; text-align: center; position: relative; overflow: hidden; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-top: 0.5rem;}
+        .stat-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
+        
+        .section-title { font-size: 0.875rem; font-weight: 600; color: #d4d4d4; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+        
+        .pattern-item { background-color: var(--bg-panel); padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;}
+        .pattern-bar-bg { width: 60px; height: 6px; background-color: var(--bg-surface); border-radius: 999px; overflow: hidden; }
+        .pattern-bar-fill { height: 100%; background-color: var(--accent-yellow); }
+        
+        .fact-item { background-color: var(--bg-panel); padding: 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(30, 58, 138, 0.3); border-left: 4px solid var(--accent-blue); margin-bottom: 0.5rem; }
+        .fact-item.internet { border-left-color: #06b6d4; border-color: rgba(6, 182, 212, 0.3); } /* Cyan border for internet facts */
+        .fact-key { font-size: 0.75rem; font-family: monospace; color: var(--accent-blue); margin-bottom: 0.25rem; }
+        .fact-item.internet .fact-key { color: #06b6d4; }
+        .fact-value { font-size: 0.875rem; color: #d4d4d4; }
 
-  const handleReset = () => {
-    engine.memory = {};
-    engine.patterns = {};
-    setMessages([{ role: 'ai', content: "Memory wiped. Ready to build new neural pathways. What shall we learn today?" }]);
-    setStats({ memoryCount: 0, patternCount: 0, topPatterns: [], recentFacts: [] });
-  };
+        @media (max-width: 768px) { .brain-panel { display: none; } }
+        .icon { width: 1.25rem; height: 1.25rem; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+        .icon-sm { width: 1rem; height: 1rem; }
+    </style>
+</head>
+<body>
 
-  return (
-    <div className="flex h-screen bg-neutral-950 text-neutral-100 font-sans overflow-hidden">
-      
-      {/* LEFT PANEL: Chat Interface */}
-      <div className="flex-1 flex flex-col h-full border-r border-neutral-800 relative">
-        {/* Header */}
-        <header className="px-6 py-4 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <BrainCircuit className="w-6 h-6 text-blue-400" />
+    <div class="app-container">
+        <!-- LEFT PANEL: Chat -->
+        <div class="chat-panel">
+            <header>
+                <div class="header-title">
+                    <div class="icon-box">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div class="title-text">
+                        <h1>Nexus AI Engine</h1>
+                        <div class="status online">
+                            <div class="dot-container">
+                                <span class="dot-ping"></span>
+                                <span class="dot-solid"></span>
+                            </div>
+                            Connected to Internet
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="messages-container" id="chat-messages">
+                <!-- Messages injected here via JS -->
             </div>
-            <div>
-              <h1 className="font-semibold text-lg tracking-tight">Nexus AI Engine</h1>
-              <p className="text-xs text-green-400 flex items-center gap-1">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                Active & Learning
-              </p>
-            </div>
-          </div>
-          <button 
-            onClick={handleReset}
-            className="p-2 text-neutral-400 hover:text-red-400 hover:bg-neutral-800 rounded-lg transition-colors"
-            title="Wipe Memory"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-        </header>
 
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex gap-4 max-w-[80%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div class="input-area">
+                <form class="input-form" id="chat-form">
+                    <input type="text" id="chat-input" class="chat-input" placeholder="Ask a question (e.g., 'What is quantum computing?') or teach me a fact..." autocomplete="off" autofocus>
+                    <button type="submit" class="btn-send" id="btn-send" disabled>
+                        <svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Diagnostics -->
+        <div class="brain-panel">
+            <div class="panel-header">
+                <svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Live Diagnostics
+            </div>
+            <div class="panel-content">
                 
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1
-                  ${msg.role === 'user' ? 'bg-neutral-800 text-neutral-300' : 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]'}`}>
-                  {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-memory-count">0</div>
+                        <div class="stat-label">Facts in Memory</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-pattern-count">0</div>
+                        <div class="stat-label">Words Mapped</div>
+                    </div>
                 </div>
 
-                <div className={`p-4 rounded-2xl leading-relaxed shadow-sm
-                  ${msg.role === 'user' 
-                    ? 'bg-neutral-800 text-neutral-100 rounded-tr-none border border-neutral-700' 
-                    : 'bg-neutral-900 text-neutral-200 rounded-tl-none border border-neutral-800'}`}>
-                  {msg.content}
+                <div>
+                    <div class="section-title">
+                        <svg class="icon icon-sm" style="color: var(--accent-yellow);" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Patterns
+                    </div>
+                    <div id="patterns-container"></div>
                 </div>
 
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input Area */}
-        <div className="p-4 bg-neutral-900 border-t border-neutral-800">
-          <form onSubmit={handleSend} className="relative flex items-center max-w-4xl mx-auto">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Teach me something (e.g., 'The capital of France is Paris')..."
-              className="w-full bg-neutral-950 border border-neutral-700 text-neutral-100 rounded-xl px-4 py-4 pr-12 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
-              autoFocus
-            />
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="absolute right-2 p-2 bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white rounded-lg transition-colors flex items-center justify-center"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* RIGHT PANEL: Brain/Learning Visualizer */}
-      <div className="w-80 bg-neutral-950 border-l border-neutral-800 flex flex-col h-full overflow-y-auto hidden md:flex shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
-        <div className="p-6 sticky top-0 bg-neutral-950/90 backdrop-blur-sm z-10 border-b border-neutral-800">
-          <h2 className="text-sm font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-2">
-            <Activity className="w-4 h-4" /> Live Diagnostics
-          </h2>
-        </div>
-
-        <div className="p-6 space-y-8">
-          
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-cyan-400 opacity-50"></div>
-              <Database className="w-5 h-5 mx-auto text-blue-400 mb-2" />
-              <div className="text-2xl font-bold text-neutral-100">{stats.memoryCount}</div>
-              <div className="text-xs text-neutral-500 mt-1">Facts Learned</div>
-            </div>
-            
-            <div className="bg-neutral-900 p-4 rounded-xl border border-neutral-800 text-center relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-pink-400 opacity-50"></div>
-              <Cpu className="w-5 h-5 mx-auto text-purple-400 mb-2" />
-              <div className="text-2xl font-bold text-neutral-100">{stats.patternCount}</div>
-              <div className="text-xs text-neutral-500 mt-1">Patterns Mapped</div>
-            </div>
-          </div>
-
-          {/* Pattern Detection */}
-          <div>
-            <h3 className="text-sm font-semibold text-neutral-300 flex items-center gap-2 mb-4">
-              <Sparkles className="w-4 h-4 text-yellow-400" /> Pattern Recognition
-            </h3>
-            {stats.topPatterns.length === 0 ? (
-              <p className="text-xs text-neutral-600 italic">Awaiting sufficient data to form patterns...</p>
-            ) : (
-              <div className="space-y-3">
-                {stats.topPatterns.map(([word, count], i) => (
-                  <div key={word} className="bg-neutral-900 px-3 py-2 rounded-lg border border-neutral-800 flex items-center justify-between group hover:border-neutral-700 transition-colors">
-                    <span className="text-sm text-neutral-300">"{word}"</span>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-16 bg-neutral-800 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-yellow-400/80 rounded-full"
-                          style={{ width: `${Math.min(count * 10, 100)}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-neutral-500 font-mono">x{count}</span>
+                <div>
+                    <div class="section-title">
+                        <svg class="icon icon-sm" style="color: var(--accent-blue);" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Neural Knowledge
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                    <div id="facts-container"></div>
+                </div>
 
-          {/* Knowledge Graph / Memory */}
-          <div>
-            <h3 className="text-sm font-semibold text-neutral-300 flex items-center gap-2 mb-4">
-              <BrainCircuit className="w-4 h-4 text-blue-400" /> Recent Explicit Knowledge
-            </h3>
-            {stats.recentFacts.length === 0 ? (
-              <div className="p-4 border border-dashed border-neutral-800 rounded-xl bg-neutral-900/50 text-center">
-                 <p className="text-xs text-neutral-500 mb-2">Knowledge Base Empty</p>
-                 <p className="text-[10px] text-neutral-600">Teach me by typing:<br/>"The sky is blue"</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {stats.recentFacts.map(([key, value]) => (
-                  <div key={key} className="bg-neutral-900 p-3 rounded-lg border border-blue-900/30 relative">
-                    <div className="absolute top-0 bottom-0 left-0 w-1 bg-blue-500/50 rounded-l-lg"></div>
-                    <div className="text-xs font-mono text-blue-400 mb-1">{key}</div>
-                    <div className="text-sm text-neutral-300 break-words flex gap-2">
-                      <span className="text-neutral-600">=&gt;</span> {value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
+            </div>
         </div>
-      </div>
-
     </div>
-  );
-}
+
+    <script>
+        class AdaptiveEngine {
+            constructor() {
+                this.memory = {}; 
+                this.memorySource = {}; // Tracks where we learned it from ('user' or 'internet')
+                this.patterns = {}; 
+                this.stopWords = new Set(['a', 'an', 'the', 'is', 'are', 'was', 'were', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'what', 'who', 'where', 'why', 'how']);
+            }
+
+            // Fetch data from Wikipedia API
+            async searchInternet(query) {
+                try {
+                    // Search for the article title first
+                    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+                    const searchRes = await fetch(searchUrl);
+                    const searchData = await searchRes.json();
+                    
+                    if (!searchData.query.search.length) return null;
+                    const title = searchData.query.search[0].title;
+                    
+                    // Fetch the summary of that article
+                    const summaryUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exsentences=2&exlimit=1&titles=${encodeURIComponent(title)}&explaintext=1&formatversion=2&format=json&origin=*`;
+                    const summaryRes = await fetch(summaryUrl);
+                    const summaryData = await summaryRes.json();
+                    
+                    const extract = summaryData.query.pages[0].extract;
+                    return extract || null;
+                } catch (e) {
+                    console.error("Internet search failed:", e);
+                    return null;
+                }
+            }
+
+            async process(input) {
+                const text = input.trim().toLowerCase();
+                const words = text.replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w && !this.stopWords.has(w));
+                let response = "";
+                let learnedSomething = false;
+                let role = 'ai'; // Default role
+
+                // 1. Update Patterns
+                words.forEach(word => {
+                    this.patterns[word] = (this.patterns[word] || 0) + 1;
+                });
+
+                // 2. Fact Extraction (User teaching the AI)
+                const factMatch = text.match(/(.*?)\s+(is|are)\s+(.*)/i);
+                if (factMatch && !text.includes('?')) {
+                    const subject = factMatch[1].trim();
+                    const value = factMatch[3].trim();
+                    
+                    if (!this.stopWords.has(subject)) {
+                        this.memory[subject] = value;
+                        this.memorySource[subject] = 'user';
+                        learnedSomething = true;
+                        response = `I have successfully learned that "${subject}" is "${value}".`;
+                    }
+                }
+
+                // 3. Question Answering & Internet Research
+                const questionMatch = text.match(/(what|who|where) (is|are|was|were) (.*)\??/i) || text.match(/(what|who) do you know about (.*)\??/i) || text.match(/tell me about (.*)/i);
+                
+                if (!learnedSomething && questionMatch) {
+                    // Get the last matched group (the actual subject)
+                    const subject = questionMatch[questionMatch.length - 1].replace(/\?$/, '').trim();
+                    
+                    // A. Check Local Memory First
+                    if (this.memory[subject]) {
+                        response = `From my local memory: ${subject} is ${this.memory[subject]}.`;
+                    } else {
+                        // B. Check Partial Local Matches
+                        const partialMatch = Object.keys(this.memory).find(k => k.includes(subject) || subject.includes(k));
+                        if (partialMatch) {
+                            response = `I don't have exact data for "${subject}", but my memory shows ${partialMatch} is ${this.memory[partialMatch]}.`;
+                        } else {
+                            // C. Trigger Internet Search
+                            showTypingIndicator(); // Show UI that we are searching
+                            const internetResult = await this.searchInternet(subject);
+                            removeTypingIndicator();
+
+                            if (internetResult) {
+                                // Save to memory so it learns it permanently!
+                                this.memory[subject] = internetResult;
+                                this.memorySource[subject] = 'internet';
+                                response = `I searched the internet and learned something new:\n\n"${internetResult}"\n\nI have now saved this to my permanent memory.`;
+                                role = 'system'; // Change color to show it came from the web
+                            } else {
+                                response = `I searched the internet for "${subject}" but couldn't find a clear answer. You can teach me by saying "${subject} is [description]".`;
+                            }
+                        }
+                    }
+                }
+
+                // 4. Fallback conversational response
+                if (!response) {
+                    if (words.length > 0) {
+                        const keyWord = words[Math.floor(Math.random() * words.length)];
+                        response = `I am processing your input regarding "${keyWord}". Ask me a question about it, or teach me a direct fact.`;
+                    } else {
+                        response = "I am listening. Ask me a question and I will search the internet if I don't know the answer.";
+                    }
+                }
+
+                return {
+                    text: response,
+                    role: role,
+                    stats: {
+                        memoryCount: Object.keys(this.memory).length,
+                        patternCount: Object.keys(this.patterns).length,
+                        topPatterns: Object.entries(this.patterns).sort((a, b) => b[1] - a[1]).slice(0, 5),
+                        // Get last 5 facts
+                        recentFacts: Object.entries(this.memory).slice(-5).map(([k, v]) => ({ key: k, value: v, source: this.memorySource[k] }))
+                    }
+                };
+            }
+        }
+
+        // --- UI & DOM Logic ---
+        const engine = new AdaptiveEngine();
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatForm = document.getElementById('chat-form');
+        const btnSend = document.getElementById('btn-send');
+
+        const icons = {
+            ai: `<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`,
+            system: `<svg class="icon icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`, // Globe icon for internet
+            user: `<svg class="icon icon-sm" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+        };
+
+        function appendMessage(role, text) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `message-wrapper ${role}`;
+            wrapper.innerHTML = `
+                <div class="message-content">
+                    <div class="avatar ${role}">${icons[role]}</div>
+                    <div class="bubble">${text.replace(/\n/g, '<br/>')}</div>
+                </div>
+            `;
+            chatMessages.appendChild(wrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        let typingDiv = null;
+        function showTypingIndicator() {
+            typingDiv = document.createElement('div');
+            typingDiv.className = `message-wrapper system`;
+            typingDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="avatar system">${icons.system}</div>
+                    <div class="bubble"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div><span style="font-size:0.75rem; color:#0891b2; margin-left:8px;">Searching Internet...</span></div>
+                </div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            if (typingDiv) {
+                typingDiv.remove();
+                typingDiv = null;
+            }
+        }
+
+        function updateDiagnostics(stats) {
+            document.getElementById('stat-memory-count').textContent = stats.memoryCount;
+            document.getElementById('stat-pattern-count').textContent = stats.patternCount;
+
+            const patternsContainer = document.getElementById('patterns-container');
+            if (stats.topPatterns.length === 0) {
+                patternsContainer.innerHTML = `<p style="font-size: 0.75rem; color: var(--text-muted);">No patterns detected yet.</p>`;
+            } else {
+                patternsContainer.innerHTML = stats.topPatterns.map(([word, count]) => `
+                    <div class="pattern-item">
+                        <span style="font-size: 0.875rem;">"${word}"</span>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div class="pattern-bar-bg"><div class="pattern-bar-fill" style="width: ${Math.min(count * 10, 100)}%"></div></div>
+                            <span style="font-size:0.75rem; color:var(--text-secondary); font-family:monospace;">x${count}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const factsContainer = document.getElementById('facts-container');
+            if (stats.recentFacts.length === 0) {
+                factsContainer.innerHTML = `<p style="font-size: 0.75rem; color: var(--text-muted);">Memory is empty. Teach me or ask a question.</p>`;
+            } else {
+                factsContainer.innerHTML = stats.recentFacts.reverse().map(fact => `
+                    <div class="fact-item ${fact.source === 'internet' ? 'internet' : ''}">
+                        <div class="fact-key">${fact.key} <span style="float:right; font-size:0.65rem; color: var(--text-muted);">${fact.source === 'internet' ? 'WEB' : 'USER'}</span></div>
+                        <div class="fact-value">${fact.value.substring(0, 60)}${fact.value.length > 60 ? '...' : ''}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        chatInput.addEventListener('input', () => btnSend.disabled = chatInput.value.trim().length === 0);
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            appendMessage('user', text);
+            chatInput.value = '';
+            btnSend.disabled = true;
+
+            // Short UI delay for "thinking"
+            setTimeout(async () => {
+                const result = await engine.process(text);
+                appendMessage(result.role, result.text);
+                updateDiagnostics(result.stats);
+            }, 300);
+        });
+
+        // Initial Greeting
+        appendMessage('ai', "System Online.\nI am connected to the Wikipedia database for internet research.\n\nAsk me a question (e.g. 'What is Quantum Computing?'). If I don't know it, I will fetch it from the internet and save it to my permanent memory.");
+
+    </script>
+</body>
+</html>
+
